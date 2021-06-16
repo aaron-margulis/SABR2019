@@ -14,8 +14,8 @@ def sim_plate_app(hitter, pitcher):
 		pitcher (dictionary)
 
 	Returns:
-		simulated outcome: in the form 'k', 'bb', '1b', etc
-		expected runs created
+		simulated_outcome: in the form 'k', 'bb', '1b', etc
+		exp_runs_created: expected runs created based on hitter-pitcher matchup
 	'''
 	# https://community.fangraphs.com/the-outcome-machine-predicting-at-bats-before-they-happen/
 	k_pct = 2.71828**(.9427 * math.log(hitter['k_pct']) + .9254 * math.log(pitcher['k_pct']) + 1.5268)
@@ -69,12 +69,11 @@ def sim_game(pitchers_df, hitters_df, using_opener):
 	while outs < 27:
 		total_plate_apps += 1
 		position_in_order = position_in_order % 9 + 1
-
 		inning = int(outs/3) + 1
-		# used for visualization which shows probability of plate app in each inning
-		# NOT expected number of plate apps in each inning.
-		# index (representing innings) starts at 0, not 1
-		sim_pa_per_hitter_per_inning.at[inning-1, position_in_order] = 1
+		
+		# sim_pa_per_hitter_per_inning used for visualization which shows probability of plate app in each inning
+		# NOT expected number of plate apps in each inning, hence using = NOT += in following line
+		sim_pa_per_hitter_per_inning.at[inning-1, position_in_order] = 1 # index (representing innings) starts at 0, not 1
 
 		# when to change pitchers
 		if using_opener:
@@ -94,13 +93,13 @@ def sim_game(pitchers_df, hitters_df, using_opener):
 				current_pitcher = 3
 		
 		hitter = hitters_df.iloc[position_in_order-1].to_dict() # simpler than using 'order' column
-		pitcher = pitchers_df.loc[current_pitcher-1].to_dict()
+		pitcher = pitchers_df.iloc[current_pitcher-1].to_dict()
 		simulated_outcome, exp_runs_created = sim_plate_app(hitter, pitcher)
 		if simulated_outcome in ['k', 'oip']:
 			outs += 1
 
-		# following two methods will converge at large enough sample size,
-		# but using expected runs is more accurate
+		# results from using LINEAR_WEIGHTS[simulated_outcome] versus exp_runs_created will converge at large enough sample size,
+		# but only need to use one and expected runs should theoretically be more accurate
 		# sim_rc_per_hitter_per_inning.loc[inning-1, position_in_order] += LINEAR_WEIGHTS[simulated_outcome]
 		sim_rc_per_hitter_per_inning.loc[inning-1, position_in_order] += exp_runs_created
 
@@ -109,7 +108,7 @@ def sim_game(pitchers_df, hitters_df, using_opener):
 
 def simulation(pitchers_df, hitters_df, using_opener, sample_size):
 	'''
-	Simulate [sample_size] games and determine expected runs created based on pitching staff and order
+	Simulate [sample_size] games and determine expected runs created based on pitching staff and rotation
 
 	Args:
 		pitchers_df (dataframe): 'order' column should follow: 1: opener, 2: starter, 3: bullpen
